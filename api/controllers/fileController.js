@@ -8,14 +8,47 @@ class fileController{
     //?
 
 
-    static async signup(req, res){
-        try{
+    static async UploadFile(req, res){
 
-        }catch(error){
-            res.status(500).json({"message" : error})
-            console.error(error)
-        }
     }
+
+    static async DownloadFile(req, res){
+
+    }
+
+    static async CreateFileShareLink(req, res){
+
+    }
+
+    static async RevokeFileShareLink(req, res){
+
+    }
+
+    static async GetFileById(req, res){
+
+    }
+
+    static async DeleteFile(req, res){
+
+    }
+
+    static async ViewMyFiles(req, res){ 
+
+    }
+
+    static async ViewPublicFiles(req, res){
+
+    }
+
+    static async MakeFilePublic(req, res){
+
+    }
+
+    static async RevokePublicFile(req, res){
+        
+    }
+
+
 
 
 }
