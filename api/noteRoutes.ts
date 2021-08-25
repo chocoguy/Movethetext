@@ -1,6 +1,10 @@
-const express = require('express')
-const noteController = require('./controllers/noteController');
+// const express = require('express')
+// const noteController = require('./controllers/noteController');
+// const router = express.Router()
+
+import express from 'express'
 const router = express.Router()
+const noteController = require('./controllers/noteController');
 
 router.route("/create").post(noteController.CreateNote)
 router.route("/create-note-share-link").post(noteController.CreateNoteShareLink)

@@ -1,4 +1,5 @@
-const express = require('express')
+//const express = require('express')
+import express from 'express'
 const fileController = require('./controllers/fileController')
 const router = express.Router()
 

@@ -1,11 +1,12 @@
+export {}
 const { MongoClient } = require('mongodb')
 require('dotenv').config()
-let testya = "da"
-let files
-let notes
-let test
-let users
-let movethetextDb  
+let testya : string = "da"
+let files : any 
+let notes : any
+let test : any
+let users : any
+let movethetextDb : string
 
 const client = new MongoClient(process.env.URI)
 
@@ -28,7 +29,7 @@ class DAO{
     }
 
     
-    static async injectDB(client) {
+    static async injectDB(client: any) {
         try{
            // movethetextDb = await conn.db(process.env.DB_NAME)
            // users = client
@@ -44,6 +45,20 @@ class DAO{
 
         }catch(error){
             console.error(`No DB connection ${error}`)
+        }
+    }
+
+
+    static async AddUser(userInfo: any){
+        try{
+            await users.insertOne({username: userInfo.username, password: userInfo.password, settings: userInfo.settings, storage: userInfo.storage, notekey: userInfo.notekey, userid:  userInfo.userid})
+            return "success"
+        }catch(error){
+            if (String(error).startsWith("MongoError: E11000 duplicate key error")) {
+                return { error: "A user with the given username already exists." }
+              }
+            console.error(`error on AddUser on DAO.js ${error}`)
+            return error
         }
     }
 

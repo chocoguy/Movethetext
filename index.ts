@@ -1,12 +1,12 @@
-const express = require('express')
-const cors = require('cors')
+import express from 'express'
+import cors from 'cors'
 const DAO = require('./controller/DAO')
 
 
 const app = express();
 require('dotenv').config()
 app.use(cors())
-app.use(express.json({extended: false}))
+app.use(express.json())
 
 
 const PORT = process.env.PORT || 5000
