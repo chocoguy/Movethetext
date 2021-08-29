@@ -25,27 +25,40 @@ class authController {
             });
         });
     }
-    static SignUp(req, res) {
+    static GetUserId() {
         return __awaiter(this, void 0, void 0, function* () {
-            try {
-                let useridd = 0;
-                const requser = req.body;
-                requser.settings = "true|false";
-                requser.storage = "500MB";
-                requser.notekey = genRandomKey(10);
-                let CounterPath = process.env.USER_COUNTER_PATH;
-                fs.readFile(CounterPath, function (err, data) {
-                    useridd = parseInt(data.toString());
-                    if (err) {
-                        console.log(`Error ${err}`);
-                    }
-                });
+            let useridd = 0;
+            let CounterPath = process.env.USER_COUNTER_PATH;
+            fs.readFile(CounterPath, function (err, data) {
+                console.log(`Data ${data}`);
+                useridd = parseInt(data.toString());
+                console.log(`ReadFile useridd ${useridd}`);
+                useridd = useridd + 1;
+                console.log(`useridd ${useridd}`);
                 fs.writeFile(CounterPath, useridd.toString(), function (err) {
                     if (err) {
                         console.log(`Error ds ${err}`);
                     }
                 });
-                requser.userid = useridd;
+                if (err) {
+                    console.log(`Error ${err}`);
+                }
+            });
+        });
+    }
+    static SignUp(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                authController.GetUserId();
+                let CounterPath = process.env.USER_COUNTER_PATH;
+                var data = fs.readFileSync(CounterPath, 'utf-8');
+                console.log(` idee ${data}`);
+                const requser = req.body;
+                requser.settings = "true|false";
+                requser.storage = "500MB";
+                requser.notekey = genRandomKey(10);
+                requser.userid = data;
+                console.log(requser.userid);
                 // const userInfo = {
                 //     ...requser,
                 //     password: await this.HashPassword
@@ -57,7 +70,8 @@ class authController {
                 //     return
                 // }
                 res.json({
-                    "message": `idee `
+                    "message": requser.userid,
+                    "message2": requser.storage
                 });
             }
             catch (error) {

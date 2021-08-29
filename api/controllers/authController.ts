@@ -20,35 +20,51 @@ class authController{
         })
     }
 
+    static async GetUserId(){
+        let useridd : number = 0;
+        let CounterPath = process.env.USER_COUNTER_PATH
+      fs.readFile(CounterPath, function (err : any, data : any){
+            console.log(`Data ${data}`)
+            useridd = parseInt(data.toString())
+            console.log(`ReadFile useridd ${useridd}`)
+            useridd = useridd + 1 
+            
+            console.log(`useridd ${useridd}`)
+           fs.writeFile(CounterPath, useridd.toString(), function(err : any){
+                
+                if(err){
+                    console.log(`Error ds ${err}`)
+                }
+            })
+            if(err){
+                console.log(`Error ${err}`)
+            }
+            
+        })
+    }
+
     static async SignUp(req : any, res : any) {
 
         try{
-            let useridd : number = 0;
+            await authController.GetUserId()
+            let CounterPath = process.env.USER_COUNTER_PATH
+            var data = fs.readFileSync(CounterPath, 'utf-8');
+
+            console.log(` idee ${data}`)
+          
+           
             const requser : any  = req.body
             
             requser.settings = "true|false"
             requser.storage = "500MB"
             requser.notekey = genRandomKey(10)
+            requser.userid = data
 
-            let CounterPath = process.env.USER_COUNTER_PATH
-            fs.readFile(CounterPath, function (err : any, data : any){
-                useridd = parseInt(data.toString())
-                if(err){
-                    console.log(`Error ${err}`)
-                }
-            })
-
-
-            fs.writeFile(CounterPath, useridd.toString(), function(err : any){
-                if(err){
-                    console.log(`Error ds ${err}`)
-                }
-            })
-
-
-
-             requser.userid = useridd
-
+            const userInfo : any = {
+                ...requser,
+                password: await authController.HashPassword(requser.password)
+            }
+             
 
             // const userInfo = {
             //     ...requser,
@@ -64,7 +80,8 @@ class authController{
             // }
 
             res.json({
-                "message" : `idee `
+                "message" : requser.userid,
+                "message2" : requser.storage
             })
 
 
