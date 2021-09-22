@@ -66,27 +66,23 @@ class authController{
             }
              
 
-            // const userInfo = {
-            //     ...requser,
-            //     password: await this.HashPassword
-            // }
-    
-            // const insertToDB = await DAO.AddUser(userInfo)
+            const insertToDB = await DAO.AddUser(userInfo)
 
-            // if (insertToDB !== 'success'){
-            //     console.error('Error while signing up')
-            //     res.status(400).json({"error" : "error while signing up"})
-            //     return
-            // }
+            if (insertToDB !== 'success'){
+                console.error('Error while signing up')
+                res.status(400).json({"error" : insertToDB})
+                return
+            }
 
             res.json({
-                "message" : requser.userid,
-                "message2" : requser.storage
+                "messsage" : requser.userid,
+                "message2" : requser.storage,
+                "message3" : "Success"
             })
 
 
         }catch(error){
-            console.error(`error on SignUp on authController.js ${error}`)
+            console.error(`error on SignUp on authController.ts ${error}`)
             res.status(500).json({'error' : 'Server error try again later'})
         }
 
@@ -94,30 +90,82 @@ class authController{
 
 
     static async Login(req: any, res: any) {
-
+        try{
+            
+            res.json({
+                "message" : "Login success"
+            })
+        }catch(error){
+            console.error(`error on Login on authController.ts ${error}`)
+            res.status(500).json({"error" : "Server error try again later"})
+        }
     }
 
 
     static async Logout(req: any, res: any) {
+        try{
 
+            res.json({
+                "message" : "Logout success"
+            })
+
+        }catch(error){
+            console.error(`error on Logout on authController.ts ${error}`)
+            res.status(500).json({"error" : "Server error try again later"})
+        }
     }
 
 
     static async Authorize(req: any, res: any) {
+        try{
 
+            res.json({
+                "message" : "Authorize success"
+            })
+
+        }catch(error){
+            console.error(`error on Authorize on authController.ts ${error}`)
+            res.status(500).json({"error" : "Server error try again later"})
+        }
     }
 
 
     static async ChangePassword(req: any, res: any) {
+        try{
 
+            res.json({
+                "message" : "changePass success"
+            })
+
+        }catch(error){
+            console.error(`error on ChangePassword on authController.ts ${error}`)
+            res.status(500).json({"error" : "Server error try again later"})
+        }
     }
 
     static async DeleteAccount(req: any , res: any) {
+        try{
 
+            res.json({
+                "message" : "DeleteAccount success"
+            })
+
+        }catch(error){
+            console.error(`error on DeleteAccount on authController.ts ${error}`)
+            res.status(500).json({"error" : "Server error try again later"})
+        }
     }
 
     static async GetProfile(req: any, res: any){
+        try{
 
+            res.json({
+                "message" : "GetProfile success"
+            })
+        }catch(error){
+            console.error(`error on GetProfile on authController.ts ${error}`)
+            res.status(500).json({"error" : "Server error try again later"})
+        }
     }
 
     

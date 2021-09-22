@@ -16,7 +16,7 @@ app.use("/api/v/files", require("./api/fileRoutes"))
 app.use("/api/v/auth", require("./api/authRoutes"))
 
 
-
-DAO.InitDB()
+//detaching DB for now
+//DAO.InitDB()
 app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 

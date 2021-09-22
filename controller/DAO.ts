@@ -6,6 +6,7 @@ let files : any
 let notes : any
 let test : any
 let users : any
+let sessions : any
 let movethetextDb : string
 
 const client = new MongoClient(process.env.URI)
@@ -22,11 +23,26 @@ class DAO{
         notes = db.collection("notes")
         test = db.collection("test")
         users = db.collection("users")
+        sessions = db.collection("sessions")
         console.log("DB Connected")
         }catch(error){
             console.error(`Error InitDB ${error}`)
         }
     }
+
+
+
+
+    //? TryCatch template
+
+    // try{
+
+    // }catch(error){
+    //     console.error(`error on CheckToken on DAO.ts ${error}`)
+    //     return "Server transaction error please try again later"
+    // }
+
+
 
     
     static async injectDB(client: any) {
@@ -49,16 +65,44 @@ class DAO{
     }
 
 
-    static async AddUser(userInfo: any){
+
+
+
+//! ---------AUTH--------- 
+
+
+
+
+    static async AddUser(userInfo: any) : Promise<string> {
         try{
             await users.insertOne({username: userInfo.username, password: userInfo.password, settings: userInfo.settings, storage: userInfo.storage, notekey: userInfo.notekey, userid:  userInfo.userid})
             return "success"
         }catch(error){
             if (String(error).startsWith("MongoError: E11000 duplicate key error")) {
-                return { error: "A user with the given username already exists." }
+                return "A user with the given username already exists."
               }
-            console.error(`error on AddUser on DAO.js ${error}`)
-            return error
+            console.error(`error on AddUser on DAO.ts ${error}`)
+            return "Server transaction error try again later"
+        }
+    }
+
+
+    static async GetUser(username : any) {
+        try{
+            return await users.findOne({"username" : username})
+        }catch(error){
+            console.error(`error on GetUser on DAO.ts ${error}`)
+            return "Server transaction error please try again later"
+        }
+        
+    }
+
+    static async CheckToken(JWT : any){
+        try{
+            return await sessions.findOne({"JWT" : JWT})
+        }catch(error){
+            console.error(`error on CheckToken on DAO.ts ${error}`)
+            return "Server transaction error please try again later"
         }
     }
 
