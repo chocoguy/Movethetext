@@ -1,5 +1,5 @@
 const DAO = require('../../controller/DAO')
-
+const authController = require('./authController')
 
 class fileController{
 
@@ -22,6 +22,7 @@ class fileController{
 
     static async DownloadFile(req: any, res: any){
         try{
+            
             
             res.json({
                 "message" : "DownloadFile success"
@@ -46,7 +47,7 @@ class fileController{
 
     static async RevokeFileShareLink(req: any, res: any){
         try{
-            
+             
             res.json({
                 "message" : "RevokeFileShareLink success"
             })

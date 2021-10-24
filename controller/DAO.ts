@@ -87,7 +87,7 @@ class DAO{
     }
 
 
-    static async GetUser(username : any) {
+    static async GetUser(username : any) : Promise<any> {
         try{
             return await users.findOne({"username" : username})
         }catch(error){
@@ -97,11 +97,78 @@ class DAO{
         
     }
 
+    static async LoginUser(userid : any, JWT : any) : Promise<any> {
+        try{
+
+            var checkLoginUser : any = await sessions.findOne({"userid" : userid}) 
+
+            if (checkLoginUser == null) {
+                await sessions.insertOne({"userid" : userid, "JWT" : JWT})
+            } else {
+                await sessions.deleteOne({ "userid" : userid })
+                await sessions.insertOne({"userid" : userid, "JWT" : JWT})
+            }
+
+            
+            return "success"
+        }catch(error){
+            console.error(`Error on LoginUser on DAO.ts ${error}`)
+            return "Server Login error please try again later"
+        }
+    }
+
+
+    static async LogoutUser(userid : any) : Promise<any> {
+        try{
+
+            await sessions.deleteOne({ "userid" : userid })
+
+            return "success"
+
+        }catch(error){
+            console.error(`Error on LogoutUser on DAO.ts ${error}`)
+            return "Server Logout error please try again later"
+        }
+    }
+
     static async CheckToken(JWT : any){
         try{
             return await sessions.findOne({"JWT" : JWT})
         }catch(error){
             console.error(`error on CheckToken on DAO.ts ${error}`)
+            return "Server transaction error please try again later"
+        }
+    }
+
+    static async UpdatePassword(userid : any, newPassword : any) : Promise<any> {
+        try{
+
+           await users.updateOne(
+               { "userid" : userid },
+               { $set: { "password" : newPassword } },
+               { upsert: true }
+           )
+
+           return "success"
+
+        }catch(error){
+            console.error(`error on UpdatePassword on DAO.ts ${error}`)
+            return "Server transaction error please try again later"
+        }
+    }
+
+
+    static async DeleteUser(userid: any) : Promise<any> {
+        try{
+
+            await users.deleteOne({"userid" : userid})
+            await notes.deleteMany({"userid" : userid})
+            await files.deleteMany({"userid" : userid})
+            await sessions.deleteMany({"userid" : userid})
+            return "success"
+
+        }catch(error){
+            console.error(`error on DeleteUser on DAO.ts ${error}`)
             return "Server transaction error please try again later"
         }
     }
