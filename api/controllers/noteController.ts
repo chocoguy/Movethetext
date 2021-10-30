@@ -1,15 +1,48 @@
 export {}
 const DAO = require('../../controller/DAO')
+const Cryptr = require('cryptr');
+require('dotenv').config()
+const cryptr : any = new Cryptr(process.env.NOTE_SECRET)
+
+
+
+//!TODO
+
+// consider moving auth functionality to a reusable function DRY
 
 
 class noteController {
 
     static async CreateNote(req: any, res: any){
         try{
-            
+
+            const reqdata : any = req.body
+
+            const providedJWT = req.get("Authorization").slice("Bearer ".length)
+
+            const currentUserObj = await authController.decodeJWT(providedJWT);
+            var { error } = currentUserObj
+            if (error){
+                res.status(401).json({"error" : "session expired, please log in again."})
+                console.error(error);
+                return
+            }
+
+            const encryptedNote : any = cryptr.encrypt(req.data.note)
+            const encryptedTitle : any = cryptr.ecrypt(req.data.title)
+
+            const uploadedNote = await DAO.CreateNote(currentUserObj.userid, encryptedTitle, encryptedNote, "private|private")
+            if (!uploadedNote) {
+                res.status(401).json({ "error" : "error uploading note, please try again later" })
+                return
+            }
+
+
+
             res.json({
-                "message" : "CreateNote success"
+                "noteid" : uploadedNote
             })
+
         }catch(error){
             console.error(`error on Login on noteController.ts ${error}`)
             res.status(500).json({"error" : "Server error try again later"})
@@ -18,6 +51,30 @@ class noteController {
 
     static async CreateNoteShareLink(req: any, res: any){
         try{
+
+            const reqdata : any = req.body
+
+            const providedJWT = req.get("Authorization").slice("Bearer ".length)
+
+            const currentUserObj = await authController.decodeJWT(providedJWT);
+            var { error } = currentUserObj
+            if (error){
+                res.status(401).json({"error" : "session expired, please log in again."})
+                console.error(error);
+                return
+            }
+
+            const ShareLink = await DAO.CreateNoteShareLink(currentUserObj.noteid, currentUserObj.userid)
+            if(!ShareLink) {
+                res.status(401).json({ "error" : "error creating share link please try again later" })
+                return
+            }
+
+            res.json({
+                "sharelink" : ShareLink
+            })
+
+
             
             res.json({
                 "message" : "CreateNoteShareLink success"
@@ -30,24 +87,57 @@ class noteController {
 
     static async RevokeNoteShareLink(req: any, res: any){
         try{
-            
+
+            const reqdata : any = req.body
+
+            const providedJWT = req.get("Authorization").slice("Bearer ".length)
+
+            const currentUserObj = await authController.decodeJWT(providedJWT);
+            var { error } = currentUserObj
+            if(error){
+                res.status(401).json({ "error" : "session expired, please log in again." })
+                console.error(error)
+                return
+            }
+
+            const RevokedShareLink = await DAO.RevokeNoteShareLink(currentUserObj.noteid, currentUserObj.userid)
+            if(!RevokedShareLink) {
+                res.status(401).json({ "error" : "error revoking share link, please try again later" })
+                return
+            }
+
             res.json({
-                "message" : "RevokeNoteShareLink success"
+                "message" : "ShareLink has been revoked"
             })
+
         }catch(error){
             console.error(`error on RevokeNoteShareLink on noteController.ts ${error}`)
             res.status(500).json({"error" : "Server error try again later"})
         }
     }
 
-    static async GetNoteById(req: any, res: any){
+    static async ViewNoteById(req: any, res: any){
         try{
+
+            const reqdata : any = req.body
+            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            if(!currentUserObj){
+                res.status(401).json({ "error" : "session expired, please log in again" })
+                return
+            }
+
+            let noteid = req.params.id
+
+
+
             
+
+
             res.json({
-                "message" : "GetNoteById success"
+                "message" : "ViewNoteById success"
             })
         }catch(error){
-            console.error(`error on GetNoteById on noteController.ts ${error}`)
+            console.error(`error on ViewNoteById on noteController.ts ${error}`)
             res.status(500).json({"error" : "Server error try again later"})
         }
     }

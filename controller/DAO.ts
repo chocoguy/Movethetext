@@ -1,3 +1,5 @@
+import { time } from "console"
+
 export {}
 const { MongoClient } = require('mongodb')
 require('dotenv').config()
@@ -10,6 +12,12 @@ let sessions : any
 let movethetextDb : string
 
 const client = new MongoClient(process.env.URI)
+
+
+
+//!TODO
+
+// Figure out proper data types and implement over application
 
 class DAO{
 
@@ -28,6 +36,14 @@ class DAO{
         }catch(error){
             console.error(`Error InitDB ${error}`)
         }
+    }
+
+    static RNG(maxint : number){
+        return Math.floor(Math.random() * maxint);
+    }
+
+    static AlphaRNG(){
+        return (Math.random() + 1).toString(36).substring(3)
     }
 
 
@@ -172,6 +188,100 @@ class DAO{
             return "Server transaction error please try again later"
         }
     }
+
+    //!END AUTH
+
+
+
+
+    //!NOTES
+
+
+    static async CreateNote(userid: any, encryptedtitle : any, encryptedNote : any, privacy : any) : Promise<any> {
+        try{
+
+            var lastEditRaw : Date = new Date();
+            var noteid : number = this.RNG(999999999);
+            
+            
+
+            await notes.insertOne(
+                {
+                    "noteid" : noteid,
+                    "userid" : userid,
+                    "notetitle" : encryptedtitle,
+                    "note" : encryptedNote,
+                    "privacy" : privacy,
+                    "sharekey" : "",
+                    "lastedit" : lastEditRaw
+
+                }
+            )
+
+            return noteid
+
+        }catch(error){
+            console.error(`error on CreateNote on DAO.ts ${error}`)
+            return "Server transaction error when creating note please try again later"
+        }
+    }
+
+
+    static async CreateNoteShareLink(noteid: any, userid: any) : Promise<any> {
+        try{
+
+            var shareKey : string = this.AlphaRNG();
+
+            await notes.updateOne(
+                { "noteid" : noteid },
+                { "userid" : userid },
+                { $set: { "sharekey" : shareKey, "privacy" : "private|link" } },
+                { upsert: true }
+            )
+
+            return `Share Link: http://localhost:5000/note/${noteid}/${shareKey}`
+
+
+
+        }catch(error){
+            console.error(`error on CreateNoteShareLink on DAO.ts ${error}`)
+            return "Server transaction error when creating share link, please try again later"
+        }
+    }
+
+
+    static async RevokeNoteShareLink(noteid: any, userid: any) : Promise<any> {
+        try{
+
+            await notes.updateOne(
+                { "noteid" : noteid },
+                { "userid" : userid },
+                { $set: { "sharekey" : "", "privacy" : "private|private" } },
+                { upsert: true }
+            )
+
+
+            return "link revoked"
+
+
+
+        }catch(error){
+            console.error(`error on RevokeNoteShareLink on DAO.ts ${error}`)
+            return "Server transaction error when revoking share link, please try again later"
+        }
+    }
+
+
+    static async GetNoteById(noteid : any) : Promise<any> {
+        try{
+
+        }catch(error) {
+            console.error(`error on GetNoteById on DAO.ts ${error}`)
+            return "Server transaction error when getting note, please try again later"
+        }
+    }
+
+
 
 
 

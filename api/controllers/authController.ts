@@ -22,6 +22,18 @@ require('dotenv').config()
 class authController{
 
 
+
+    static async CheckUserToken(providedJWT : any){
+        const CurrentObj = await this.decodeJWT(providedJWT);
+        var { error } = CurrentObj
+        if(error){
+            console.error(error)
+            return
+        }
+        return CurrentObj;
+    } 
+
+
     static async HashPassword(plainTextPass : string){
         bcrypt.genSalt(saltRounds, function(err : any , salt : any){
             bcrypt.hash(plainTextPass, salt, function(err : any, hash : string){
