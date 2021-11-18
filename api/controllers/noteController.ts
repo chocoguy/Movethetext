@@ -9,7 +9,7 @@ const cryptr : any = new Cryptr(process.env.NOTE_SECRET)
 //!TODO
 
 // consider moving auth functionality to a reusable function DRY
-
+//trigger new JWT when user updates settings or perhaps store on a cookie
 
 class noteController {
 
@@ -28,8 +28,8 @@ class noteController {
                 return
             }
 
-            const encryptedNote : any = cryptr.encrypt(req.data.note)
-            const encryptedTitle : any = cryptr.ecrypt(req.data.title)
+            const encryptedNote : any = cryptr.encrypt(reqdata.note)
+            const encryptedTitle : any = cryptr.ecrypt(reqdata.title)
 
             const uploadedNote = await DAO.CreateNote(currentUserObj.userid, encryptedTitle, encryptedNote, "private|private")
             if (!uploadedNote) {
@@ -128,14 +128,17 @@ class noteController {
 
             let noteid = req.params.id
 
+            const requestedNote = await DAO.GetNoteById(noteid, currentUserObj.userid)
+            if(!requestedNote) {
+                res.status(401).json({ "error" : "error retriveing note, please try again later" })
+                return
+            }
 
+            requestedNote.notetitle = cryptr.decrypt(requestedNote.title)
+            requestedNote.note = cryptr.decrypt(requestedNote.note)
 
-            
+            res.json(requestedNote)
 
-
-            res.json({
-                "message" : "ViewNoteById success"
-            })
         }catch(error){
             console.error(`error on ViewNoteById on noteController.ts ${error}`)
             res.status(500).json({"error" : "Server error try again later"})
@@ -144,9 +147,24 @@ class noteController {
 
     static async DeleteNote(req: any, res: any){
         try{
-            
+
+            const reqdata : any = req.body
+            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            if(!currentUserObj){
+                res.status(401).json({ "error" : "session expired, please log in again" })
+                return
+            }
+
+            let noteid = req.params.id
+
+            const deletedNote = await DAO.DeleteNote(noteid, currentUserObj.userid)
+            if(!deletedNote) {
+                res.status(401).json({ "error" : "error deleting note, please try again later" })
+                return
+            }
+
             res.json({
-                "message" : "DeleteNote success"
+                "message" : "note has been deleted"
             })
         }catch(error){
             console.error(`error on DeleteNote on noteController.ts ${error}`)
@@ -156,10 +174,32 @@ class noteController {
 
     static async EditNote(req: any, res: any){
         try{
+
+            const reqdata : any = req.body
+            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            if(!currentUserObj){
+                res.status(401).json({ "error" : "session expired, please log in again" })
+                return
+            }
+            
+            let noteid = req.params.id
+
+            const encryptedNote : any = cryptr.encrypt(reqdata.note)
+            const encryptedTitle : any = cryptr.ecrypt(reqdata.title)
+
+
+
+            const editNote = await DAO.EditNote(noteid, currentUserObj.userid, encryptedTitle, encryptedNote)
+            if(!editNote) {
+                res.status(401).json({"error" : "error editing note, please try again later"})
+                return
+            }
+
             
             res.json({
-                "message" : "EditNote success"
+                "message" : "note has been edited"
             })
+
         }catch(error){
             console.error(`error on EditNote on noteController.ts ${error}`)
             res.status(500).json({"error" : "Server error try again later"})
@@ -169,7 +209,32 @@ class noteController {
     static async ViewMyNotes(req: any, res: any){
         try{
 
-            res.status(200).json({"info" : "Returning notes"})
+            const reqdata : any = req.body
+            const decryptedNotesArray : any = []
+            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            if(!currentUserObj){
+                res.status(401).json({ "error" : "session expired, please log in again" })
+                return
+            }
+
+            const userNotes = await DAO.viewUserNotes(currentUserObj.userid)
+            if(!userNotes) {
+                res.status(401).json({"error" : "error viewing notes, please try again later"})
+                return
+            }
+
+            userNotes.forEach((Note : any) => {
+                Note.usertitle = cryptr.decrypt(Note.usertitle)
+                Note.notetitle = cryptr.decrypt(Note.notetitle)
+                decryptedNotesArray.push(Note)
+            });
+
+            res.json({
+                "notes" : decryptedNotesArray
+            })
+
+
+            
         }catch(error){
             console.error(`error on ViewMyNotes on noteController.js ${error}`)
             res.status(500).json({"error" : "Server error please try again later"})
@@ -178,10 +243,32 @@ class noteController {
 
     static async ViewPublicNotes(req: any, res: any){
         try{
-            
+
+            const reqdata : any = req.body
+            const decryptedNotesArray : any = []
+            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            if(!currentUserObj){
+                res.status(401).json({ "error" : "session expired, please log in again" })
+                return
+            }
+
+            const publicNotes = await DAO.viewPublicNotes()
+            if(!publicNotes) {
+                res.status(401).json({"error" : "error viewing notes, please try again later"})
+                return
+            }
+
+            publicNotes.forEach((PublicNote : any) => {
+                PublicNote.usertitle = cryptr.decrypt(PublicNote.usertitle)
+                PublicNote.notetitle = cryptr.decrypt(publicNotes.notetitle)
+                decryptedNotesArray.push(PublicNote)
+            });
+
             res.json({
-                "message" : "ViewPublicNotes success"
+                "publicnotes" : decryptedNotesArray
+            
             })
+
         }catch(error){
             console.error(`error on ViewPublicNotes on noteController.ts ${error}`)
             res.status(500).json({"error" : "Server error try again later"})
@@ -190,10 +277,26 @@ class noteController {
 
     static async MakeNotePublic(req: any, res: any){
         try{
+
+            const reqdata : any = req.body
+            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            if(!currentUserObj){
+                res.status(401).json({ "error" : "session expired, please log in again" })
+                return
+            }
+
+            let noteid = req.params.id
+
+            const updatedNote = await DAO.makeNotePublic(noteid, currentUserObj.userid)
+            if(!updatedNote) {
+                res.status(401).json({"error" : "error making note public, please try again later"})
+                return
+            }
             
             res.json({
-                "message" : "MakeNotePublic success"
+                "message" : "Note is now public!"
             })
+
         }catch(error){
             console.error(`error on MakeNotePublic on noteController.ts ${error}`)
             res.status(500).json({"error" : "Server error try again later"})
@@ -202,6 +305,22 @@ class noteController {
 
     static async RevokePublicNote(req: any, res: any){
         try{
+
+            const reqdata : any = req.body
+            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            if(!currentUserObj){
+                res.status(401).json({ "error" : "session expired, please log in again" })
+                return
+            }
+
+            let noteid = req.params.id
+
+            const updatedNote = await DAO.makeNotePrivate(noteid, currentUserObj.userid)
+            if(!updatedNote) {
+                res.status(401).json({"error" : "error making note private, please try again later"})
+                return
+            }
+
             
             res.json({
                 "message" : "RevokePublicNotes success"
@@ -214,39 +333,45 @@ class noteController {
 
     static async UpdateSettings(req: any, res: any){
         try{
+
+            const reqdata : any = req.body
+            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            if(!currentUserObj){
+                res.status(401).json({ "error" : "session expired, please log in again" })
+                return
+            }
+
+
+            const updatedUserSettings = await DAO.updateUserSettings(currentUserObj.userid, reqdata.newsettings)
+            if(!updatedUserSettings){
+                res.status(401).json({"error" : "error updating user settings, please try again later"})
+                return
+            }
+
             
             res.json({
-                "message" : "UpdateSettings success"
+                "message" : "Settings updated"
             })
+
         }catch(error){
             console.error(`error on UpdateSettings on noteController.ts ${error}`)
             res.status(500).json({"error" : "Server error try again later"})
         }
     }
 
-    static async GetSettings(req: any, res: any){
-        try{
-            
-            res.json({
-                "message" : "GetSettings success"
-            })
-        }catch(error){
-            console.error(`error on GetSettings on noteController.ts ${error}`)
-            res.status(500).json({"error" : "Server error try again later"})
-        }
-    }
 
-    static async RequestStorage(req: any, res: any){
-        try{
+
+    // static async RequestStorage(req: any, res: any){
+    //     try{
             
-            res.json({
-                "message" : "RequestStorage success"
-            })
-        }catch(error){
-            console.error(`error on RequestStorage on noteController.ts ${error}`)
-            res.status(500).json({"error" : "Server error try again later"})
-        }
-    }
+    //         res.json({
+    //             "message" : "RequestStorage success"
+    //         })
+    //     }catch(error){
+    //         console.error(`error on RequestStorage on noteController.ts ${error}`)
+    //         res.status(500).json({"error" : "Server error try again later"})
+    //     }
+    // }
 
 }
 

@@ -13,13 +13,21 @@ require('dotenv').config()
 // Consistent naming
 // proper error handling and messages
 // proper message relaying
-// implement azure
+// implement cloudinary
+//completly logout on logout and change password
+//add JWT check to every route. if JWT absent completly logout and redirect to login page
+
 
 
 
 
 
 class authController{
+
+
+    static async Sleep(time : any){
+        return new Promise((resolve) => setTimeout(resolve, time))
+    }
 
 
 
@@ -34,13 +42,12 @@ class authController{
     } 
 
 
-    static async HashPassword(plainTextPass : string){
-        bcrypt.genSalt(saltRounds, function(err : any , salt : any){
-            bcrypt.hash(plainTextPass, salt, function(err : any, hash : string){
-                return hash
-            })
-        })
+     static async HashPassword(plainTextPass : string){
+      let hash =  await bcrypt.hash(plainTextPass, saltRounds)
+      return hash
     }
+
+
 
     static async GetUserId(){
         let useridd : number = 0;
@@ -82,38 +89,48 @@ class authController{
             {
                 return {error}
             }
-            return {"username" : res.username, "settings" : res.settings, "storage" : res.storage, "notekey" : res.notekey, "userid" : res.userid}
+            return {"username" : res.data.username, "settings" : res.data.settings, "storage" : res.data.storage, "notekey" : res.data.notekey, "userid" : res.data.userid}
         })
     }
 
     static async SignUp(req : any, res : any) {
 
         try{
+
+            const requser : any  = req.body
+
+
+            const doesUserExist = await DAO.GetUser(requser.username)
+            if(doesUserExist){
+                res.status(400).json({"error" : "username already taken! Please choose another username"})
+                return
+            }
+
             await authController.GetUserId()
             let CounterPath = process.env.USER_COUNTER_PATH
             var data = fs.readFileSync(CounterPath, 'utf-8');
 
-            console.log(` idee ${data}`)
+            console.log(` ID ${data}`)
           
            
-            const requser : any  = req.body
+           
             
             requser.settings = "true|false"
             requser.storage = "500MB"
             requser.notekey = genRandomKey(10)
             requser.userid = data
 
+
             const userInfo : any = {
                 ...requser,
                 password: await authController.HashPassword(requser.password)
             }
              
-
             const insertToDB = await DAO.AddUser(userInfo)
 
-            if (insertToDB !== 'success'){
+            if (!insertToDB){
                 console.error('Error Signup on authController.ts insertToDB')
-                res.status(400).json({"error" : insertToDB})
+                res.status(500).json({"error" : "Internal server error, please try again later"})
                 return
             }
 
@@ -125,7 +142,15 @@ class authController{
                 res.status(500).json({'error' : 'Server error try again later'})
             }
 
-            const authToken = await this.encodeJWT(requser.username, requser.settings, requser.storage, requser.notekey, requser.userid);
+            const authToken = await authController.encodeJWT(requser.username, requser.settings, requser.storage, requser.notekey, requser.userid);
+
+            const tryLogin = await DAO.LoginUser(requser.userid, authToken)
+            if (!tryLogin) {
+                res.status(500).json({ "error" : "Error when logging in please try again later" })
+                console.error(`Error on Login on authcontroller.ts`)
+                return
+            }
+
 
             res.json({
                 "auth_token": authToken,
@@ -160,17 +185,17 @@ class authController{
                 return
             }
 
-            if(!(await this.comparePassword(requser.password, currentUser.password))) {
+            if(!(await authController.comparePassword(requser.password, currentUser.password))) {
                 res.status(401).json({ "error" : "Wrong Creds!" })
                 return
             }
 
-            const authToken = await this.encodeJWT(currentUser.username, currentUser.settings, currentUser.storage, currentUser.notekey, currentUser.userid)
+            const authToken = await authController.encodeJWT(currentUser.username, currentUser.settings, currentUser.storage, currentUser.notekey, currentUser.userid)
 
-            const tryLogin = await DAO.Login(requser.userid, authToken)
-            if (!tryLogin.success) {
+            const tryLogin = await DAO.LoginUser(currentUser.userid, authToken)
+            if (!tryLogin) {
                 res.status(500).json({ "error" : "Error when logging in, try again LATER" })
-                console.error(`Error on Login on authcontroller.ts ${tryLogin.errror}`)
+                console.error(`Error on Login on authcontroller.ts `)
                 return
             }
 
@@ -188,13 +213,14 @@ class authController{
 
             const providedJWT = req.get("Authorization").slice("Bearer ".length)
 
-            const currentUserObj = await this.decodeJWT(providedJWT);
+            const currentUserObj = await authController.decodeJWT(providedJWT);
             var { error } = currentUserObj
             if(error){
                 res.status(401).json({ "message" : "Unauthorized. Try logging in again" })
                 console.error(error)
                 return
             }
+
 
             const tryLogout = await DAO.LogoutUser(currentUserObj.userid)
             if (tryLogout !== "success") {
@@ -217,9 +243,27 @@ class authController{
     static async Authorize(req: any, res: any) {
         try{
 
+            const providedJWT = req.get("Authorization").slice("Bearer ".length)
+
+            const currentUserObj = await authController.decodeJWT(providedJWT);
+            var { error } = currentUserObj
+            if(error){
+                res.status(401).json({ "message" : "Unauthorized. Try logging in again" })
+                return false
+            }
+
+            const checkJWT = await DAO.CheckToken(providedJWT)
+            if(!checkJWT){
+                res.status(401).json({"error" : "Session expired!, please try log in again"})
+                return false
+            }
+
+
             res.json({
-                "message" : "Authorize success"
+                "message" : "Authorized"
             })
+
+            return true
 
         }catch(error){
             console.error(`error on Authorize on authController.ts ${error}`)
@@ -235,11 +279,10 @@ class authController{
 
             const providedJWT = req.get("Authorization").slice("Bearer ".length)
 
-            const currentUserObj = await this.decodeJWT(providedJWT)
+            const currentUserObj = await authController.decodeJWT(providedJWT)
             var { error } = currentUserObj
             if(error){
                 res.status(401).json({ "message" : "Unauthorized. Try logging in again" })
-                console.error(error)
                 return
             }
 
@@ -254,39 +297,28 @@ class authController{
                 return
             }
 
-            if(!await this.comparePassword(reqdata.oldpassword, currentUser.password)){
+
+            if(!(await authController.comparePassword(reqdata.oldpassword, currentUser.password))) {
                 res.status(401).json({ "error" : "Wrong Creds!" })
                 return
             }
 
-            const NewPassword = this.HashPassword(reqdata.newpassword)
+           const NewPassword = await authController.HashPassword(reqdata.password)
 
-            const updatePassword = DAO.UpdatePassword(currentUser.userid, NewPassword) 
-            if(updatePassword !== "success"){
+           const updatePassword = await DAO.UpdatePassword(currentUser.userid, NewPassword) 
+            if(!updatePassword){
                 res.status(500).json({ "error" : "Server error try again later" })
-                console.error(updatePassword)
                 return
             }
 
             const tryLogout = await DAO.LogoutUser(currentUserObj.userid)
-            if (tryLogout !== "success") {
-                res.status(500).json({ "error" : "Error when loggin out, try again LATER!!!" })
-                console.error(error)
+            if (!tryLogout) {
+                res.status(500).json({ "error" : "Error when logging out, try again later" })
                 return
             }
 
             res.json({
                 "message" : "password change success, please log in with your new password"
-            })
-
-
-
-
-
-
-
-            res.json({
-                "message" : "Password has been changed. Please login with your new password!"
             })
 
         }catch(error){
@@ -302,11 +334,10 @@ class authController{
 
             const providedJWT = req.get("Authorization").slice("Bearer ".length)
 
-            const User = await this.decodeJWT(providedJWT)
-            var { error } = User
-            if(error) {
-                res.status(401).json({"message" : "Unauthorized try logging in again."})
-                console.error(error)
+            const currentUserObj = await authController.decodeJWT(providedJWT)
+            var { error } = currentUserObj
+            if(error){
+                res.status(401).json({ "message" : "Unauthorized. Try logging in again" })
                 return
             }
 
@@ -315,26 +346,26 @@ class authController{
                 return
             }
 
-            const DBUser = await DAO.GetUser(User.username)
-            if(!DBUser){
-                res.status(401).json({ "error" : "Wrong creds!" })
-                console.log(DBUser)
-                return
-            }
-
-            if(!await this.comparePassword(reqdata.password, DBUser.password)){
+            const currentUser = await DAO.GetUser(currentUserObj.username)
+            if (!currentUser) {
                 res.status(401).json({ "error" : "Wrong Creds!" })
                 return
             }
 
 
-            const DeleteUser = await DAO.DeleteUser(User.userid)
-            if(DeleteUser !== "success"){
-                res.status(401).json({ "error" : "Unabl to delete account please try again later." })
+            if(!(await authController.comparePassword(reqdata.password, currentUser.password))) {
+                res.status(401).json({ "error" : "Wrong Creds!" })
                 return
             }
 
-            //TODO Add functionality to delete azure binaries
+
+            const DeleteUser = await DAO.DeleteUser(currentUserObj.userid)
+            if(!DeleteUser){
+                res.status(401).json({ "error" : "Unable to delete account please try again later." })
+                return
+            }
+
+            //TODO Add functionality to delete azure/cloudinary binaries
 
 
             res.json({

@@ -18,6 +18,7 @@ const client = new MongoClient(process.env.URI)
 //!TODO
 
 // Figure out proper data types and implement over application
+// Implement check user method to double check JWT's making app more secure
 
 class DAO{
 
@@ -89,16 +90,20 @@ class DAO{
 
 
 
-    static async AddUser(userInfo: any) : Promise<string> {
+    static async AddUser(userInfo: any) : Promise<any> {
         try{
-            await users.insertOne({username: userInfo.username, password: userInfo.password, settings: userInfo.settings, storage: userInfo.storage, notekey: userInfo.notekey, userid:  userInfo.userid})
-            return "success"
+
+
+
+                await users.insertOne({username: userInfo.username, password: userInfo.password, settings: userInfo.settings, storage: userInfo.storage, notekey: userInfo.notekey, userid:  userInfo.userid})
+                return "success"
+
         }catch(error){
             if (String(error).startsWith("MongoError: E11000 duplicate key error")) {
                 return "A user with the given username already exists."
               }
             console.error(`error on AddUser on DAO.ts ${error}`)
-            return "Server transaction error try again later"
+            return null
         }
     }
 
@@ -108,7 +113,7 @@ class DAO{
             return await users.findOne({"username" : username})
         }catch(error){
             console.error(`error on GetUser on DAO.ts ${error}`)
-            return "Server transaction error please try again later"
+            return null
         }
         
     }
@@ -129,7 +134,7 @@ class DAO{
             return "success"
         }catch(error){
             console.error(`Error on LoginUser on DAO.ts ${error}`)
-            return "Server Login error please try again later"
+            return null
         }
     }
 
@@ -143,7 +148,7 @@ class DAO{
 
         }catch(error){
             console.error(`Error on LogoutUser on DAO.ts ${error}`)
-            return "Server Logout error please try again later"
+            return null
         }
     }
 
@@ -152,7 +157,7 @@ class DAO{
             return await sessions.findOne({"JWT" : JWT})
         }catch(error){
             console.error(`error on CheckToken on DAO.ts ${error}`)
-            return "Server transaction error please try again later"
+            return null
         }
     }
 
@@ -169,7 +174,7 @@ class DAO{
 
         }catch(error){
             console.error(`error on UpdatePassword on DAO.ts ${error}`)
-            return "Server transaction error please try again later"
+            return null
         }
     }
 
@@ -185,7 +190,7 @@ class DAO{
 
         }catch(error){
             console.error(`error on DeleteUser on DAO.ts ${error}`)
-            return "Server transaction error please try again later"
+            return null
         }
     }
 
@@ -222,7 +227,7 @@ class DAO{
 
         }catch(error){
             console.error(`error on CreateNote on DAO.ts ${error}`)
-            return "Server transaction error when creating note please try again later"
+            return null
         }
     }
 
@@ -245,7 +250,7 @@ class DAO{
 
         }catch(error){
             console.error(`error on CreateNoteShareLink on DAO.ts ${error}`)
-            return "Server transaction error when creating share link, please try again later"
+            return null
         }
     }
 
@@ -267,19 +272,215 @@ class DAO{
 
         }catch(error){
             console.error(`error on RevokeNoteShareLink on DAO.ts ${error}`)
-            return "Server transaction error when revoking share link, please try again later"
+            return null
         }
     }
 
-
-    static async GetNoteById(noteid : any) : Promise<any> {
+ 
+    static async GetNoteById(noteid : any, userid : any) : Promise<any> {
         try{
+
+            return await notes.findOne({ "userid" : userid, "noteid" : noteid })
+            
 
         }catch(error) {
             console.error(`error on GetNoteById on DAO.ts ${error}`)
-            return "Server transaction error when getting note, please try again later"
+            return null
         }
     }
+
+
+    static async DeleteNote(noteid : any, userid : any) : Promise<any> {
+        try{
+
+            await notes.deleteOne({ "userid" : userid, "noteid" : noteid })
+
+            return "Note removed"
+
+        } catch(error) {
+            console.error(`errror on DeleteNote on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+
+    static async EditNote(noteid : any, userid : any, encryptedtitle : any, encryptedNote : any) : Promise<any> {
+        try{
+
+            var lastEditRaw : Date = new Date();
+
+            await notes.updateOne(
+                { "noteid" : noteid },
+                { "userid" : userid },
+                { $set: { "note" : encryptedNote, "notetitle" : encryptedtitle, "lastedit" : lastEditRaw } }
+            )
+
+            return "Note Modified"
+
+        } catch(error) {
+            console.error(`error on EditNote on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+
+    static async viewUserNotes(userid : any) : Promise<any> {
+        try{
+
+            return await notes.find({ "userid" : userid })
+
+
+        } catch(error) {
+            console.error(`error on viewUserNotes on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+
+    static async viewPublicNotes() : Promise<any> {
+        try{
+            return await notes.find({ "privacy" : "private|public" })
+        } catch(error) {
+            console.error(`error on viewPublicNotes on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+    static async makeNotePublic(noteid : any, userid : any) : Promise<any> {
+        try{
+
+            var lastEditRaw : Date = new Date()
+
+            await notes.updateOne(
+                { "noteid" : noteid },
+                { "userid" : userid },
+                { $set: { "privacy" : "private|public", "lastedit" : lastEditRaw } }
+            )
+
+            return "Note updated"
+
+
+        } catch(error) {
+            console.error(`error on makeNotePublic on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+    static async makeNotePrivate(noteid : any, userid : any) : Promise<any> {
+        try{
+
+            var lastEditRaw : Date = new Date()
+
+            await notes.updateOne(
+                { "noteid" : noteid },
+                { "userid" : userid },
+                { $set: { "privacy" : "private|private", "lastedit" : lastEditRaw } }
+            )
+
+            return "Note updated"
+
+
+        } catch(error) {
+            console.error(`error on makeNotePublic on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+
+    static async updateUserSettings(userid : any, settings : any) : Promise<any> {
+        try {
+
+            await users.updateOne(
+                {"userid" : userid},
+                { $set: { "settings" : settings } }
+            )
+
+            return "User settings updated"
+
+        } catch (error) {
+            console.error(`error on updateUserSettings on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+
+    //!END NOTES    
+
+
+
+
+    //!FILES
+
+
+    static async CreateFile(userid : any, filetitle : any, filename : any, link : any) : Promise<any> {
+        try {
+            var lastEditRaw : Date = new Date()
+            var fileid : number = this.RNG(99999);
+
+            await files.insertOne(
+                {
+                    "fileid" : fileid,
+                    "userid" : userid,
+                    "filetitle" : filetitle,
+                    "filename" : filename,
+                    "privacy" : "private|private",
+                    "link" : link,
+                    "sharekey" : "",
+                    "lastedit" : lastEditRaw
+
+                }
+            )
+
+            return fileid
+
+
+        } catch (error) {
+            console.error(`error on CreateFile on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+
+    static async ViewFileById(userid: any, fileid : any) : Promise<any> {
+        try{
+
+            return await files.findOne({ "userid" : userid, "fileid" : fileid })
+
+        } catch (error) {
+            console.error(`error on ViewFileById on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+
+    static async DeleteFile(userid : any, fileid : any) : Promise<any> {
+        try {
+            
+            await files.deleteOne({ "userid" : userid, "fileid" : fileid })
+
+            return "File deleted"
+
+        } catch (error) {
+            console.error(`error on DeleteNote on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+
+    static async ViewUserFiles(userid : any) : Promise<any> {
+        try {
+
+
+            return await files.find({ "userid" : userid})
+
+        } catch (error) {
+            console.error(`error on ViewUserFiles on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+
+
 
 
 
