@@ -11,6 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const DAO = require('../../controller/DAO');
 const Cryptr = require('cryptr');
+const authController = require('./authController');
 require('dotenv').config();
 const cryptr = new Cryptr(process.env.NOTE_SECRET);
 //!TODO
@@ -26,18 +27,17 @@ class noteController {
                 var { error } = currentUserObj;
                 if (error) {
                     res.status(401).json({ "error": "session expired, please log in again." });
-                    console.error(error);
                     return;
                 }
                 const encryptedNote = cryptr.encrypt(reqdata.note);
-                const encryptedTitle = cryptr.ecrypt(reqdata.title);
+                const encryptedTitle = cryptr.encrypt(reqdata.title);
                 const uploadedNote = yield DAO.CreateNote(currentUserObj.userid, encryptedTitle, encryptedNote, "private|private");
                 if (!uploadedNote) {
                     res.status(401).json({ "error": "error uploading note, please try again later" });
                     return;
                 }
                 res.json({
-                    "noteid": uploadedNote
+                    "noteid": uploadedNote.toString()
                 });
             }
             catch (error) {
@@ -55,19 +55,15 @@ class noteController {
                 var { error } = currentUserObj;
                 if (error) {
                     res.status(401).json({ "error": "session expired, please log in again." });
-                    console.error(error);
                     return;
                 }
-                const ShareLink = yield DAO.CreateNoteShareLink(currentUserObj.noteid, currentUserObj.userid);
+                const ShareLink = yield DAO.CreateNoteShareLink(reqdata.noteid, currentUserObj.userid);
                 if (!ShareLink) {
                     res.status(401).json({ "error": "error creating share link please try again later" });
                     return;
                 }
                 res.json({
                     "sharelink": ShareLink
-                });
-                res.json({
-                    "message": "CreateNoteShareLink success"
                 });
             }
             catch (error) {
@@ -107,18 +103,18 @@ class noteController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const reqdata = req.body;
-                const currentUserObj = yield authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+                const currentUserObj = yield authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
                 if (!currentUserObj) {
                     res.status(401).json({ "error": "session expired, please log in again" });
                     return;
                 }
                 let noteid = req.params.id;
-                const requestedNote = yield DAO.GetNoteById(noteid, currentUserObj.userid);
+                const requestedNote = yield DAO.GetNoteById(noteid, currentUserObj.userid, "personal");
                 if (!requestedNote) {
                     res.status(401).json({ "error": "error retriveing note, please try again later" });
                     return;
                 }
-                requestedNote.notetitle = cryptr.decrypt(requestedNote.title);
+                requestedNote.notetitle = cryptr.decrypt(requestedNote.notetitle);
                 requestedNote.note = cryptr.decrypt(requestedNote.note);
                 res.json(requestedNote);
             }
@@ -310,6 +306,32 @@ class noteController {
             }
             catch (error) {
                 console.error(`error on UpdateSettings on noteController.ts ${error}`);
+                res.status(500).json({ "error": "Server error try again later" });
+            }
+        });
+    }
+    static ViewSharedNote(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const reqdata = req.body;
+                const currentUserObj = yield authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
+                if (!currentUserObj) {
+                    res.status(401).json({ "error": "session expired, please log in again" });
+                    return;
+                }
+                let noteid = req.params.id;
+                let sharekey = req.params.sharekey;
+                const requestedNote = yield DAO.GetNoteByShareKey(noteid, sharekey);
+                if (!requestedNote) {
+                    res.status(401).json({ "error": "error retriving note, please try again later" });
+                    return;
+                }
+                requestedNote.notetitle = yield cryptr.decrypt(requestedNote.notetitle);
+                requestedNote.note = yield cryptr.decrypt(requestedNote.note);
+                res.json(requestedNote);
+            }
+            catch (error) {
+                console.error(`error on ViewSharedNote on noteController.ts ${error}`);
                 res.status(500).json({ "error": "Server error try again later" });
             }
         });

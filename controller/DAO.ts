@@ -207,12 +207,12 @@ class DAO{
 
             var lastEditRaw : Date = new Date();
             var noteid : number = this.RNG(999999999);
-            
+
             
 
             await notes.insertOne(
                 {
-                    "noteid" : noteid,
+                    "noteid" : noteid.toString(),
                     "userid" : userid,
                     "notetitle" : encryptedtitle,
                     "note" : encryptedNote,
@@ -244,7 +244,7 @@ class DAO{
                 { upsert: true }
             )
 
-            return `Share Link: http://localhost:5000/note/${noteid}/${shareKey}`
+            return `Share Link: http://localhost:5000/note/id/${noteid}/sharekey/${shareKey}`
 
 
 
@@ -277,17 +277,41 @@ class DAO{
     }
 
  
-    static async GetNoteById(noteid : any, userid : any) : Promise<any> {
+    //only used to get PERSONAL notes
+    static async GetNoteById(noteid : any, userid : any, notetype : string) : Promise<any> {
         try{
 
-            return await notes.findOne({ "userid" : userid, "noteid" : noteid })
-            
+            //FOR notetype
+            // personal == retrive personal note, check userid and noteid
+            //public == retrive public note, check noteid and permissions
+
+            if(notetype == "personal"){
+                return await notes.findOne({ "userid" : userid, "noteid" : noteid })
+            }else if(notetype == "public"){
+                return await notes.findOne({ "noteid" : noteid, "privacy" : "private|public" })
+            }
+
+
 
         }catch(error) {
-            console.error(`error on GetNoteById on DAO.ts ${error}`)
+            console.error(`error on GetnoteById on DAO.ts ${error}`)
             return null
         }
     }
+
+    static async GetNoteBySharekey(noteid : any, sharekey : any) : Promise<any> {
+        try{
+
+            return await notes.findOne({ "noteid" : noteid, "sharekey" : sharekey, "privacy" : "private|link" })
+
+        }catch(error) {
+            console.error(`error on GetNoteByShareKey on DAO.ts ${error}`)
+            return null
+        }
+    }
+
+
+
 
 
     static async DeleteNote(noteid : any, userid : any) : Promise<any> {
@@ -469,6 +493,8 @@ class DAO{
 
     static async ViewUserFiles(userid : any) : Promise<any> {
         try {
+
+            
 
 
             return await files.find({ "userid" : userid})

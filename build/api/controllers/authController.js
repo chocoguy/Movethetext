@@ -287,7 +287,7 @@ class authController {
                 }
                 const currentUser = yield DAO.GetUser(currentUserObj.username);
                 if (!currentUser) {
-                    res.status(401).json({ "error": "Wrong Creds!!" });
+                    res.status(401).json({ "error": "Wrong Creds!" });
                     return;
                 }
                 if (!(yield authController.comparePassword(reqdata.password, currentUser.password))) {
@@ -299,7 +299,7 @@ class authController {
                     res.status(401).json({ "error": "Unable to delete account please try again later." });
                     return;
                 }
-                //TODO Add functionality to delete azure binaries
+                //TODO Add functionality to delete azure/cloudinary binaries
                 res.json({
                     "message": "Account and related notes/files has been deleted. Thank you for using MoveTheText :) "
                 });

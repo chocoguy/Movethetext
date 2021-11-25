@@ -13,6 +13,7 @@ router.route("/create").post(noteController.CreateNote);
 router.route("/create-note-share-link").post(noteController.CreateNoteShareLink);
 router.route("/revoke-note-share-link").post(noteController.RevokeNoteShareLink);
 router.route("/id/:id").get(noteController.ViewNoteById);
+router.route("/id/:id/sharekey/:sharekey").get(noteController.ViewSharedNote);
 router.route("/delete/:id").delete(noteController.DeleteNote);
 router.route("/edit/:id").put(noteController.EditNote);
 router.route("/my-notes").get(noteController.ViewMyNotes);

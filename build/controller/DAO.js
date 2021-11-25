@@ -175,7 +175,7 @@ class DAO {
                 var lastEditRaw = new Date();
                 var noteid = this.RNG(999999999);
                 yield notes.insertOne({
-                    "noteid": noteid,
+                    "noteid": noteid.toString(),
                     "userid": userid,
                     "notetitle": encryptedtitle,
                     "note": encryptedNote,
@@ -196,7 +196,7 @@ class DAO {
             try {
                 var shareKey = this.AlphaRNG();
                 yield notes.updateOne({ "noteid": noteid }, { "userid": userid }, { $set: { "sharekey": shareKey, "privacy": "private|link" } }, { upsert: true });
-                return `Share Link: http://localhost:5000/note/${noteid}/${shareKey}`;
+                return `Share Link: http://localhost:5000/note/id/${noteid}/sharekey/${shareKey}`;
             }
             catch (error) {
                 console.error(`error on CreateNoteShareLink on DAO.ts ${error}`);
@@ -216,13 +216,33 @@ class DAO {
             }
         });
     }
-    static GetNoteById(noteid, userid) {
+    //only used to get PERSONAL notes
+    static GetNoteById(noteid, userid, notetype) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                return yield notes.findOne({ "userid": userid, "noteid": noteid });
+                //FOR notetype
+                // personal == retrive personal note, check userid and noteid
+                //public == retrive public note, check noteid and permissions
+                if (notetype == "personal") {
+                    return yield notes.findOne({ "userid": userid, "noteid": noteid });
+                }
+                else if (notetype == "public") {
+                    return yield notes.findOne({ "noteid": noteid, "privacy": "private|public" });
+                }
             }
             catch (error) {
-                console.error(`error on GetNoteById on DAO.ts ${error}`);
+                console.error(`error on GetnoteById on DAO.ts ${error}`);
+                return null;
+            }
+        });
+    }
+    static GetNoteBySharekey(noteid, sharekey) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                return yield notes.findOne({ "noteid": noteid, "sharekey": sharekey, "privacy": "private|link" });
+            }
+            catch (error) {
+                console.error(`error on GetNoteByShareKey on DAO.ts ${error}`);
                 return null;
             }
         });

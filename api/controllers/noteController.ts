@@ -1,6 +1,7 @@
 export {}
 const DAO = require('../../controller/DAO')
 const Cryptr = require('cryptr');
+const authController = require('./authController')
 require('dotenv').config()
 const cryptr : any = new Cryptr(process.env.NOTE_SECRET)
 
@@ -24,12 +25,11 @@ class noteController {
             var { error } = currentUserObj
             if (error){
                 res.status(401).json({"error" : "session expired, please log in again."})
-                console.error(error);
                 return
             }
 
             const encryptedNote : any = cryptr.encrypt(reqdata.note)
-            const encryptedTitle : any = cryptr.ecrypt(reqdata.title)
+            const encryptedTitle : any = cryptr.encrypt(reqdata.title)
 
             const uploadedNote = await DAO.CreateNote(currentUserObj.userid, encryptedTitle, encryptedNote, "private|private")
             if (!uploadedNote) {
@@ -40,7 +40,7 @@ class noteController {
 
 
             res.json({
-                "noteid" : uploadedNote
+                "noteid" : uploadedNote.toString()
             })
 
         }catch(error){
@@ -60,11 +60,10 @@ class noteController {
             var { error } = currentUserObj
             if (error){
                 res.status(401).json({"error" : "session expired, please log in again."})
-                console.error(error);
                 return
             }
 
-            const ShareLink = await DAO.CreateNoteShareLink(currentUserObj.noteid, currentUserObj.userid)
+            const ShareLink = await DAO.CreateNoteShareLink(reqdata.noteid, currentUserObj.userid)
             if(!ShareLink) {
                 res.status(401).json({ "error" : "error creating share link please try again later" })
                 return
@@ -75,10 +74,6 @@ class noteController {
             })
 
 
-            
-            res.json({
-                "message" : "CreateNoteShareLink success"
-            })
         }catch(error){
             console.error(`error on CreateNoteShareLink on noteController.ts ${error}`)
             res.status(500).json({"error" : "Server error try again later"})
@@ -120,7 +115,7 @@ class noteController {
         try{
 
             const reqdata : any = req.body
-            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            const currentUserObj = await authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
             if(!currentUserObj){
                 res.status(401).json({ "error" : "session expired, please log in again" })
                 return
@@ -128,13 +123,15 @@ class noteController {
 
             let noteid = req.params.id
 
-            const requestedNote = await DAO.GetNoteById(noteid, currentUserObj.userid)
+
+            const requestedNote = await DAO.GetNoteById(noteid, currentUserObj.userid, "personal")
+
             if(!requestedNote) {
                 res.status(401).json({ "error" : "error retriveing note, please try again later" })
                 return
             }
 
-            requestedNote.notetitle = cryptr.decrypt(requestedNote.title)
+            requestedNote.notetitle = cryptr.decrypt(requestedNote.notetitle)
             requestedNote.note = cryptr.decrypt(requestedNote.note)
 
             res.json(requestedNote)
@@ -355,6 +352,38 @@ class noteController {
 
         }catch(error){
             console.error(`error on UpdateSettings on noteController.ts ${error}`)
+            res.status(500).json({"error" : "Server error try again later"})
+        }
+    }
+
+
+    static async ViewSharedNote(req: any, res: any){
+        try {
+
+            const reqdata : any = req.body
+            const currentUserObj = await authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
+            if(!currentUserObj){
+                res.status(401).json({ "error" : "session expired, please log in again" })
+                return
+            }
+
+            let noteid = req.params.id
+            let sharekey = req.params.sharekey
+
+            const requestedNote = await DAO.GetNoteByShareKey(noteid, sharekey)
+            if(!requestedNote) {
+                res.status(401).json({"error" : "error retriving note, please try again later"})
+                return
+            }
+
+            requestedNote.notetitle = await cryptr.decrypt(requestedNote.notetitle)
+            requestedNote.note = await cryptr.decrypt(requestedNote.note)
+
+            res.json(requestedNote)
+
+
+        } catch(error){
+            console.error(`error on ViewSharedNote on noteController.ts ${error}`)
             res.status(500).json({"error" : "Server error try again later"})
         }
     }
