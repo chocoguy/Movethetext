@@ -95,7 +95,7 @@ class noteController {
                 return
             }
 
-            const RevokedShareLink = await DAO.RevokeNoteShareLink(currentUserObj.noteid, currentUserObj.userid)
+            const RevokedShareLink = await DAO.RevokeNoteShareLink(reqdata.noteid, currentUserObj.userid)
             if(!RevokedShareLink) {
                 res.status(401).json({ "error" : "error revoking share link, please try again later" })
                 return
@@ -124,7 +124,7 @@ class noteController {
             let noteid = req.params.id
 
 
-            const requestedNote = await DAO.GetNoteById(noteid, currentUserObj.userid, "personal")
+            const requestedNote = await DAO.GetNoteById(noteid, currentUserObj.userid)
 
             if(!requestedNote) {
                 res.status(401).json({ "error" : "error retriveing note, please try again later" })
@@ -207,24 +207,28 @@ class noteController {
         try{
 
             const reqdata : any = req.body
-            const decryptedNotesArray : any = []
+            let rawNotesArray : Array<object> = []
+            let decryptedNotesArray : Array<object> = []
+
             const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
             if(!currentUserObj){
                 res.status(401).json({ "error" : "session expired, please log in again" })
                 return
             }
 
-            const userNotes = await DAO.viewUserNotes(currentUserObj.userid)
+            let userNotes = await DAO.viewUserNotes(currentUserObj.userid)
             if(!userNotes) {
                 res.status(401).json({"error" : "error viewing notes, please try again later"})
                 return
             }
 
-            userNotes.forEach((Note : any) => {
-                Note.usertitle = cryptr.decrypt(Note.usertitle)
+            rawNotesArray = userNotes.notesList;
+
+            rawNotesArray.forEach(function(Note : any) {
                 Note.notetitle = cryptr.decrypt(Note.notetitle)
+                Note.note = cryptr.decrypt(Note.note)
                 decryptedNotesArray.push(Note)
-            });
+            })
 
             res.json({
                 "notes" : decryptedNotesArray
@@ -242,25 +246,29 @@ class noteController {
         try{
 
             const reqdata : any = req.body
-            const decryptedNotesArray : any = []
-            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
-            if(!currentUserObj){
-                res.status(401).json({ "error" : "session expired, please log in again" })
-                return
-            }
+            let rawNotesArray : Array<object> = []
+            let decryptedNotesArray : Array<object> = []
 
-            const publicNotes = await DAO.viewPublicNotes()
+            let publicNotes = await DAO.viewPublicNotes()
             if(!publicNotes) {
                 res.status(401).json({"error" : "error viewing notes, please try again later"})
                 return
             }
 
-            publicNotes.forEach((PublicNote : any) => {
-                PublicNote.usertitle = cryptr.decrypt(PublicNote.usertitle)
-                PublicNote.notetitle = cryptr.decrypt(publicNotes.notetitle)
-                decryptedNotesArray.push(PublicNote)
-            });
+            rawNotesArray = publicNotes.notesList;
 
+            
+
+            rawNotesArray.forEach(function(Note : any) {
+                Note.notetitle = cryptr.decrypt(Note.notetitle)
+                Note.note = cryptr.decrypt(Note.note)
+                decryptedNotesArray.push(Note)
+                
+            })
+           
+            
+
+            //console.log(decryptedNotesArray[0]);
             res.json({
                 "publicnotes" : decryptedNotesArray
             
@@ -276,15 +284,19 @@ class noteController {
         try{
 
             const reqdata : any = req.body
-            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
-            if(!currentUserObj){
-                res.status(401).json({ "error" : "session expired, please log in again" })
+            const providedJWT = req.get("Authorization").slice("Bearer ".length)
+
+            const currentUserObj = await authController.decodeJWT(providedJWT);
+            var { error } = currentUserObj
+            if(error){
+                res.status(401).json({ "error" : "session expired, please log in again." })
+                console.error(error)
                 return
             }
 
-            let noteid = req.params.id
+          
 
-            const updatedNote = await DAO.makeNotePublic(noteid, currentUserObj.userid)
+            const updatedNote = await DAO.makeNotePublic(reqdata.noteid, currentUserObj.userid)
             if(!updatedNote) {
                 res.status(401).json({"error" : "error making note public, please try again later"})
                 return
@@ -304,15 +316,20 @@ class noteController {
         try{
 
             const reqdata : any = req.body
-            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
-            if(!currentUserObj){
-                res.status(401).json({ "error" : "session expired, please log in again" })
+
+            const providedJWT = req.get("Authorization").slice("Bearer ".length)
+
+            const currentUserObj = await authController.decodeJWT(providedJWT);
+            var { error } = currentUserObj
+            if(error){
+                res.status(401).json({ "error" : "session expired, please log in again." })
+                console.error(error)
                 return
             }
 
-            let noteid = req.params.id
+           
 
-            const updatedNote = await DAO.makeNotePrivate(noteid, currentUserObj.userid)
+            const updatedNote = await DAO.makeNotePrivate(reqdata.noteid, currentUserObj.userid)
             if(!updatedNote) {
                 res.status(401).json({"error" : "error making note private, please try again later"})
                 return
@@ -320,7 +337,7 @@ class noteController {
 
             
             res.json({
-                "message" : "RevokePublicNotes success"
+                "message" : "Note is now private!"
             })
         }catch(error){
             console.error(`error on RevokePublicNotes on noteController.ts ${error}`)
@@ -370,7 +387,7 @@ class noteController {
             let noteid = req.params.id
             let sharekey = req.params.sharekey
 
-            const requestedNote = await DAO.GetNoteByShareKey(noteid, sharekey)
+            const requestedNote = await DAO.GetNoteBySharekey(noteid, sharekey)
             if(!requestedNote) {
                 res.status(401).json({"error" : "error retriving note, please try again later"})
                 return

@@ -1,3 +1,4 @@
+import { notStrictEqual } from "assert"
 import { time } from "console"
 
 export {}
@@ -238,10 +239,8 @@ class DAO{
             var shareKey : string = this.AlphaRNG();
 
             await notes.updateOne(
-                { "noteid" : noteid },
-                { "userid" : userid },
-                { $set: { "sharekey" : shareKey, "privacy" : "private|link" } },
-                { upsert: true }
+                { "noteid" : noteid, "userid" : userid },
+                { $set: { "sharekey" : shareKey, "privacy" : "private|link" } }
             )
 
             return `Share Link: http://localhost:5000/note/id/${noteid}/sharekey/${shareKey}`
@@ -259,10 +258,8 @@ class DAO{
         try{
 
             await notes.updateOne(
-                { "noteid" : noteid },
-                { "userid" : userid },
-                { $set: { "sharekey" : "", "privacy" : "private|private" } },
-                { upsert: true }
+                { "noteid" : noteid, "userid" : userid },
+                { $set: { "sharekey" : "", "privacy" : "private|private" } }
             )
 
 
@@ -277,21 +274,20 @@ class DAO{
     }
 
  
-    //only used to get PERSONAL notes
-    static async GetNoteById(noteid : any, userid : any, notetype : string) : Promise<any> {
+    
+    static async GetNoteById(noteid : any, userid : any) : Promise<any> {
         try{
 
             //FOR notetype
             // personal == retrive personal note, check userid and noteid
             //public == retrive public note, check noteid and permissions
 
-            if(notetype == "personal"){
-                return await notes.findOne({ "userid" : userid, "noteid" : noteid })
-            }else if(notetype == "public"){
+            var tryPrivateNote = await notes.findOne({ "userid" : userid, "noteid" : noteid })
+            if(!tryPrivateNote){
                 return await notes.findOne({ "noteid" : noteid, "privacy" : "private|public" })
+            }else{
+                return tryPrivateNote;
             }
-
-
 
         }catch(error) {
             console.error(`error on GetnoteById on DAO.ts ${error}`)
@@ -351,8 +347,9 @@ class DAO{
     static async viewUserNotes(userid : any) : Promise<any> {
         try{
 
-            return await notes.find({ "userid" : userid })
-
+            let currentNotes =  await notes.find({ "userid" : userid })
+            const notesList = await currentNotes.toArray()
+            return { notesList }
 
         } catch(error) {
             console.error(`error on viewUserNotes on DAO.ts ${error}`)
@@ -363,7 +360,10 @@ class DAO{
 
     static async viewPublicNotes() : Promise<any> {
         try{
-            return await notes.find({ "privacy" : "private|public" })
+            //return await notes.find({ "privacy" : "private|public" })
+            let currentNotes = await notes.find({ "privacy" : "private|public" })
+            const notesList = await currentNotes.toArray()
+            return { notesList };
         } catch(error) {
             console.error(`error on viewPublicNotes on DAO.ts ${error}`)
             return null
@@ -376,8 +376,7 @@ class DAO{
             var lastEditRaw : Date = new Date()
 
             await notes.updateOne(
-                { "noteid" : noteid },
-                { "userid" : userid },
+                { "noteid" : noteid, "userid" : userid },
                 { $set: { "privacy" : "private|public", "lastedit" : lastEditRaw } }
             )
 
@@ -396,8 +395,7 @@ class DAO{
             var lastEditRaw : Date = new Date()
 
             await notes.updateOne(
-                { "noteid" : noteid },
-                { "userid" : userid },
+                { "noteid" : noteid, "userid" : userid },
                 { $set: { "privacy" : "private|private", "lastedit" : lastEditRaw } }
             )
 

@@ -18,8 +18,8 @@ router.route("/delete/:id").delete(noteController.DeleteNote);
 router.route("/edit/:id").put(noteController.EditNote);
 router.route("/my-notes").get(noteController.ViewMyNotes);
 router.route("/public-notes").get(noteController.ViewPublicNotes);
-router.route("/make-note-public/:id").post(noteController.MakeNotePublic);
-router.route("/revoke-public-note/:id").post(noteController.RevokePublicNote);
+router.route("/make-note-public").post(noteController.MakeNotePublic);
+router.route("/make-note-private").post(noteController.RevokePublicNote);
 router.route("/settings").post(noteController.UpdateSettings);
 //router.route("/settings").get(noteController.GetSettings)
 //router.route("/request-storage").post(noteController.RequestStorage)

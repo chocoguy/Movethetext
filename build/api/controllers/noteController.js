@@ -84,7 +84,7 @@ class noteController {
                     console.error(error);
                     return;
                 }
-                const RevokedShareLink = yield DAO.RevokeNoteShareLink(currentUserObj.noteid, currentUserObj.userid);
+                const RevokedShareLink = yield DAO.RevokeNoteShareLink(reqdata.noteid, currentUserObj.userid);
                 if (!RevokedShareLink) {
                     res.status(401).json({ "error": "error revoking share link, please try again later" });
                     return;
@@ -109,7 +109,7 @@ class noteController {
                     return;
                 }
                 let noteid = req.params.id;
-                const requestedNote = yield DAO.GetNoteById(noteid, currentUserObj.userid, "personal");
+                const requestedNote = yield DAO.GetNoteById(noteid, currentUserObj.userid);
                 if (!requestedNote) {
                     res.status(401).json({ "error": "error retriveing note, please try again later" });
                     return;
@@ -210,22 +210,21 @@ class noteController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const reqdata = req.body;
-                const decryptedNotesArray = [];
-                const currentUserObj = yield authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
-                if (!currentUserObj) {
-                    res.status(401).json({ "error": "session expired, please log in again" });
-                    return;
-                }
-                const publicNotes = yield DAO.viewPublicNotes();
+                let rawNotesArray = [];
+                let decryptedNotesArray = [];
+                let publicNotes = yield DAO.viewPublicNotes();
                 if (!publicNotes) {
                     res.status(401).json({ "error": "error viewing notes, please try again later" });
                     return;
                 }
-                publicNotes.forEach((PublicNote) => {
-                    PublicNote.usertitle = cryptr.decrypt(PublicNote.usertitle);
-                    PublicNote.notetitle = cryptr.decrypt(publicNotes.notetitle);
-                    decryptedNotesArray.push(PublicNote);
+                rawNotesArray = publicNotes.notesList;
+                rawNotesArray.forEach(function (Note) {
+                    console.log(Note);
+                    Note.notetitle = cryptr.decrypt(Note.notetitle);
+                    Note.note = cryptr.decrypt(Note.note);
+                    decryptedNotesArray.push(Note);
                 });
+                //console.log(decryptedNotesArray[0]);
                 res.json({
                     "publicnotes": decryptedNotesArray
                 });
@@ -240,13 +239,15 @@ class noteController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const reqdata = req.body;
-                const currentUserObj = yield authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
-                if (!currentUserObj) {
-                    res.status(401).json({ "error": "session expired, please log in again" });
+                const providedJWT = req.get("Authorization").slice("Bearer ".length);
+                const currentUserObj = yield authController.decodeJWT(providedJWT);
+                var { error } = currentUserObj;
+                if (error) {
+                    res.status(401).json({ "error": "session expired, please log in again." });
+                    console.error(error);
                     return;
                 }
-                let noteid = req.params.id;
-                const updatedNote = yield DAO.makeNotePublic(noteid, currentUserObj.userid);
+                const updatedNote = yield DAO.makeNotePublic(reqdata.noteid, currentUserObj.userid);
                 if (!updatedNote) {
                     res.status(401).json({ "error": "error making note public, please try again later" });
                     return;
@@ -265,19 +266,21 @@ class noteController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const reqdata = req.body;
-                const currentUserObj = yield authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
-                if (!currentUserObj) {
-                    res.status(401).json({ "error": "session expired, please log in again" });
+                const providedJWT = req.get("Authorization").slice("Bearer ".length);
+                const currentUserObj = yield authController.decodeJWT(providedJWT);
+                var { error } = currentUserObj;
+                if (error) {
+                    res.status(401).json({ "error": "session expired, please log in again." });
+                    console.error(error);
                     return;
                 }
-                let noteid = req.params.id;
-                const updatedNote = yield DAO.makeNotePrivate(noteid, currentUserObj.userid);
+                const updatedNote = yield DAO.makeNotePrivate(reqdata.noteid, currentUserObj.userid);
                 if (!updatedNote) {
                     res.status(401).json({ "error": "error making note private, please try again later" });
                     return;
                 }
                 res.json({
-                    "message": "RevokePublicNotes success"
+                    "message": "Note is now private!"
                 });
             }
             catch (error) {
@@ -321,7 +324,7 @@ class noteController {
                 }
                 let noteid = req.params.id;
                 let sharekey = req.params.sharekey;
-                const requestedNote = yield DAO.GetNoteByShareKey(noteid, sharekey);
+                const requestedNote = yield DAO.GetNoteBySharekey(noteid, sharekey);
                 if (!requestedNote) {
                     res.status(401).json({ "error": "error retriving note, please try again later" });
                     return;

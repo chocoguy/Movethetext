@@ -195,7 +195,7 @@ class DAO {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 var shareKey = this.AlphaRNG();
-                yield notes.updateOne({ "noteid": noteid }, { "userid": userid }, { $set: { "sharekey": shareKey, "privacy": "private|link" } }, { upsert: true });
+                yield notes.updateOne({ "noteid": noteid, "userid": userid }, { $set: { "sharekey": shareKey, "privacy": "private|link" } });
                 return `Share Link: http://localhost:5000/note/id/${noteid}/sharekey/${shareKey}`;
             }
             catch (error) {
@@ -207,7 +207,7 @@ class DAO {
     static RevokeNoteShareLink(noteid, userid) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                yield notes.updateOne({ "noteid": noteid }, { "userid": userid }, { $set: { "sharekey": "", "privacy": "private|private" } }, { upsert: true });
+                yield notes.updateOne({ "noteid": noteid, "userid": userid }, { $set: { "sharekey": "", "privacy": "private|private" } });
                 return "link revoked";
             }
             catch (error) {
@@ -216,18 +216,18 @@ class DAO {
             }
         });
     }
-    //only used to get PERSONAL notes
-    static GetNoteById(noteid, userid, notetype) {
+    static GetNoteById(noteid, userid) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 //FOR notetype
                 // personal == retrive personal note, check userid and noteid
                 //public == retrive public note, check noteid and permissions
-                if (notetype == "personal") {
-                    return yield notes.findOne({ "userid": userid, "noteid": noteid });
-                }
-                else if (notetype == "public") {
+                var tryPrivateNote = yield notes.findOne({ "userid": userid, "noteid": noteid });
+                if (!tryPrivateNote) {
                     return yield notes.findOne({ "noteid": noteid, "privacy": "private|public" });
+                }
+                else {
+                    return tryPrivateNote;
                 }
             }
             catch (error) {
@@ -275,7 +275,9 @@ class DAO {
     static viewUserNotes(userid) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                return yield notes.find({ "userid": userid });
+                let noteArray = yield notes.find({ "userid": userid });
+                const notesList = yield noteArray.toArray();
+                return { notesList };
             }
             catch (error) {
                 console.error(`error on viewUserNotes on DAO.ts ${error}`);
@@ -286,7 +288,10 @@ class DAO {
     static viewPublicNotes() {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                return yield notes.find({ "privacy": "private|public" });
+                //return await notes.find({ "privacy" : "private|public" })
+                let currentNotes = yield notes.find({ "privacy": "private|public" });
+                const notesList = yield currentNotes.toArray();
+                return { notesList };
             }
             catch (error) {
                 console.error(`error on viewPublicNotes on DAO.ts ${error}`);
@@ -298,7 +303,7 @@ class DAO {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 var lastEditRaw = new Date();
-                yield notes.updateOne({ "noteid": noteid }, { "userid": userid }, { $set: { "privacy": "private|public", "lastedit": lastEditRaw } });
+                yield notes.updateOne({ "noteid": noteid, "userid": userid }, { $set: { "privacy": "private|public", "lastedit": lastEditRaw } });
                 return "Note updated";
             }
             catch (error) {
@@ -311,7 +316,7 @@ class DAO {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 var lastEditRaw = new Date();
-                yield notes.updateOne({ "noteid": noteid }, { "userid": userid }, { $set: { "privacy": "private|private", "lastedit": lastEditRaw } });
+                yield notes.updateOne({ "noteid": noteid, "userid": userid }, { $set: { "privacy": "private|private", "lastedit": lastEditRaw } });
                 return "Note updated";
             }
             catch (error) {
