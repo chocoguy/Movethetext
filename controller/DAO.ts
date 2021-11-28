@@ -330,8 +330,7 @@ class DAO{
             var lastEditRaw : Date = new Date();
 
             await notes.updateOne(
-                { "noteid" : noteid },
-                { "userid" : userid },
+                { "noteid" : noteid, "userid" : userid },
                 { $set: { "note" : encryptedNote, "notetitle" : encryptedtitle, "lastedit" : lastEditRaw } }
             )
 

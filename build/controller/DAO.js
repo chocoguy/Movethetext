@@ -263,7 +263,7 @@ class DAO {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 var lastEditRaw = new Date();
-                yield notes.updateOne({ "noteid": noteid }, { "userid": userid }, { $set: { "note": encryptedNote, "notetitle": encryptedtitle, "lastedit": lastEditRaw } });
+                yield notes.updateOne({ "noteid": noteid, "userid": userid }, { $set: { "note": encryptedNote, "notetitle": encryptedtitle, "lastedit": lastEditRaw } });
                 return "Note Modified";
             }
             catch (error) {
@@ -275,8 +275,8 @@ class DAO {
     static viewUserNotes(userid) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                let noteArray = yield notes.find({ "userid": userid });
-                const notesList = yield noteArray.toArray();
+                let currentNotes = yield notes.find({ "userid": userid });
+                const notesList = yield currentNotes.toArray();
                 return { notesList };
             }
             catch (error) {

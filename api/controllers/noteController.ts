@@ -146,7 +146,7 @@ class noteController {
         try{
 
             const reqdata : any = req.body
-            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            const currentUserObj = await authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
             if(!currentUserObj){
                 res.status(401).json({ "error" : "session expired, please log in again" })
                 return
@@ -173,7 +173,7 @@ class noteController {
         try{
 
             const reqdata : any = req.body
-            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            const currentUserObj = await authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
             if(!currentUserObj){
                 res.status(401).json({ "error" : "session expired, please log in again" })
                 return
@@ -182,7 +182,7 @@ class noteController {
             let noteid = req.params.id
 
             const encryptedNote : any = cryptr.encrypt(reqdata.note)
-            const encryptedTitle : any = cryptr.ecrypt(reqdata.title)
+            const encryptedTitle : any = cryptr.encrypt(reqdata.title)
 
 
 
@@ -210,7 +210,7 @@ class noteController {
             let rawNotesArray : Array<object> = []
             let decryptedNotesArray : Array<object> = []
 
-            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            const currentUserObj = await authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
             if(!currentUserObj){
                 res.status(401).json({ "error" : "session expired, please log in again" })
                 return
@@ -349,7 +349,7 @@ class noteController {
         try{
 
             const reqdata : any = req.body
-            const currentUserObj = await authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+            const currentUserObj = await authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
             if(!currentUserObj){
                 res.status(401).json({ "error" : "session expired, please log in again" })
                 return

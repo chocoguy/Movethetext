@@ -128,7 +128,7 @@ class noteController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const reqdata = req.body;
-                const currentUserObj = yield authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+                const currentUserObj = yield authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
                 if (!currentUserObj) {
                     res.status(401).json({ "error": "session expired, please log in again" });
                     return;
@@ -153,14 +153,14 @@ class noteController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const reqdata = req.body;
-                const currentUserObj = yield authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+                const currentUserObj = yield authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
                 if (!currentUserObj) {
                     res.status(401).json({ "error": "session expired, please log in again" });
                     return;
                 }
                 let noteid = req.params.id;
                 const encryptedNote = cryptr.encrypt(reqdata.note);
-                const encryptedTitle = cryptr.ecrypt(reqdata.title);
+                const encryptedTitle = cryptr.encrypt(reqdata.title);
                 const editNote = yield DAO.EditNote(noteid, currentUserObj.userid, encryptedTitle, encryptedNote);
                 if (!editNote) {
                     res.status(401).json({ "error": "error editing note, please try again later" });
@@ -180,20 +180,22 @@ class noteController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const reqdata = req.body;
-                const decryptedNotesArray = [];
-                const currentUserObj = yield authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+                let rawNotesArray = [];
+                let decryptedNotesArray = [];
+                const currentUserObj = yield authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
                 if (!currentUserObj) {
                     res.status(401).json({ "error": "session expired, please log in again" });
                     return;
                 }
-                const userNotes = yield DAO.viewUserNotes(currentUserObj.userid);
+                let userNotes = yield DAO.viewUserNotes(currentUserObj.userid);
                 if (!userNotes) {
                     res.status(401).json({ "error": "error viewing notes, please try again later" });
                     return;
                 }
-                userNotes.forEach((Note) => {
-                    Note.usertitle = cryptr.decrypt(Note.usertitle);
+                rawNotesArray = userNotes.notesList;
+                rawNotesArray.forEach(function (Note) {
                     Note.notetitle = cryptr.decrypt(Note.notetitle);
+                    Note.note = cryptr.decrypt(Note.note);
                     decryptedNotesArray.push(Note);
                 });
                 res.json({
@@ -219,7 +221,6 @@ class noteController {
                 }
                 rawNotesArray = publicNotes.notesList;
                 rawNotesArray.forEach(function (Note) {
-                    console.log(Note);
                     Note.notetitle = cryptr.decrypt(Note.notetitle);
                     Note.note = cryptr.decrypt(Note.note);
                     decryptedNotesArray.push(Note);
@@ -293,7 +294,7 @@ class noteController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const reqdata = req.body;
-                const currentUserObj = yield authController.CheckToken(req.get("Authorization").slice("Bearer ".length));
+                const currentUserObj = yield authController.CheckUserToken(req.get("Authorization").slice("Bearer ".length));
                 if (!currentUserObj) {
                     res.status(401).json({ "error": "session expired, please log in again" });
                     return;
